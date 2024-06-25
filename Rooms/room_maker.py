@@ -78,6 +78,39 @@ add_modifier(obj, MOD_NAME, MOD_TYPE)
 #Create BMesh
 bm = bmesh.new()
 bm.from_mesh(mesh) 
+
+#----Delete Random Vertices
+#1X swap to edit mode
+#2 select 'random' vertices
+#-- Xneed to determine range based on GRID_SIZE_RANGE
+#-- Figure out how to select only the verts in selectedVerts 
+#3 ensure there are no islands from deletion
+#4 return to object mode
+#   bpy.ops.mesh.delete() => delete whatever is selected **only in edit mode
+#   bpy.ops.object.editmode_toggle() => toggle between edit and object mode
+bpy.ops.object.editmode_toggle()
+
+removeAmount = 0
+if cols == GRID_SIZE_RANGE[0]:
+    removeAmount = 1
+elif cols == GRID_SIZE_RANGE[1]:
+    removeAmount = 3
+else:
+    removeAmount= 2
+if rows == GRID_SIZE_RANGE[0]:
+    removeAmount += 1
+elif rows == GRID_SIZE_RANGE[1]:
+    removeAmount += 3
+else:
+    removeAmount += 2
+
+selectedVerts = []
+for i in range(removeAmount):
+    selectedVerts.append(random.choice([vert for vert in bm.verts]))
+for v in selectedVerts:
+    v.select = True
+
+
 #Check for/create modifier
 closed = mesh.attributes.get('closed')
 posted = mesh.attributes.get('posted')
