@@ -51,6 +51,30 @@ def add_modifier(active_object, modifier_name, modifier_type):
     for i in range(len(active_object.modifiers) - 1):
         bpy.ops.object.modifier_move_up(modifier = modifier.name)
 
+def calculate_remove_amount():
+    removeAmount = 0
+    if cols == GRID_SIZE_RANGE[0]:
+        removeAmount = 1
+    elif cols == GRID_SIZE_RANGE[1]:
+        removeAmount = 3
+    else:
+        removeAmount= 2
+    if rows == GRID_SIZE_RANGE[0]:
+        removeAmount += 1
+    elif rows == GRID_SIZE_RANGE[1]:
+        removeAmount += 3
+    else:
+        removeAmount += 2
+    return removeAmount
+
+def deselect_all(bm):
+    for f in bm.faces:
+        f.select = False
+    for e in bm.edges:
+        e.select = False
+    for v in bm.verts:
+        v.select = False
+
 #Create Column/Row sizes for grid
 cols = random.randint(GRID_SIZE_RANGE[0], GRID_SIZE_RANGE[1])
 rows = random.randint(GRID_SIZE_RANGE[0], GRID_SIZE_RANGE[1])
@@ -77,39 +101,27 @@ add_modifier(obj, MOD_NAME, MOD_TYPE)
 
 #Create BMesh
 bm = bmesh.new()
-bm.from_mesh(mesh) 
 
-#----Delete Random Vertices
-#1X swap to edit mode
-#2 select 'random' vertices
-#-- Xneed to determine range based on GRID_SIZE_RANGE
-#-- Figure out how to select only the verts in selectedVerts 
-#3 ensure there are no islands from deletion
-#4 return to object mode
-#   bpy.ops.mesh.delete() => delete whatever is selected **only in edit mode
-#   bpy.ops.object.editmode_toggle() => toggle between edit and object mode
+# Toggle into edit mode and fill bmesh with edit mode data
 bpy.ops.object.editmode_toggle()
+bm = bmesh.from_edit_mesh(mesh)
+# Deselect every face in edit mode
+bpy.ops.mesh.select_all(action='DESELECT')
 
-removeAmount = 0
-if cols == GRID_SIZE_RANGE[0]:
-    removeAmount = 1
-elif cols == GRID_SIZE_RANGE[1]:
-    removeAmount = 3
-else:
-    removeAmount= 2
-if rows == GRID_SIZE_RANGE[0]:
-    removeAmount += 1
-elif rows == GRID_SIZE_RANGE[1]:
-    removeAmount += 3
-else:
-    removeAmount += 2
-
-selectedVerts = []
+# Determine how many faces to remove
+# Then select random faces up to that amount
+removeAmount = calculate_remove_amount()
 for i in range(removeAmount):
-    selectedVerts.append(random.choice([vert for vert in bm.verts]))
-for v in selectedVerts:
-    v.select = True
+    face = random.choice([face for face in bm.faces]).select = True
 
+
+# bmesh.update_edit_mesh(mesh=mesh, destructive=True)
+bpy.ops.mesh.delete(type='FACE')
+
+#Return to object mode and refresh bmesh data for object mode data
+bpy.ops.object.editmode_toggle()
+bm = bmesh.new()
+bm.from_mesh(mesh) 
 
 #Check for/create modifier
 closed = mesh.attributes.get('closed')
@@ -122,13 +134,16 @@ if not posted:
     posted.name = 'posted'
 
 
+#Set closed attribute for all edges with only one linked face
 for e in bm.edges: 
+    setattr(closed.data[e.index], 'value', True)
     if len(e.link_faces) == 1:
         setattr(closed.data[e.index], 'value', True)
         
     else:
         setattr(closed.data[e.index], 'value', False)
 
+#Set posted attribute for all verts with less than four linked faces
 for v in bm.verts:
     if len(v.link_faces) < 4:
         setattr(posted.data[v.index], 'value', True)
